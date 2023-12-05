@@ -11,9 +11,12 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-const createRedisClient = () => {
-    return redis.createClient('redis://red-clni7ipll56s73ficld0:6379');
-};
+// Tworzenie klienta Redis
+const redisClient = redis.createClient(process.env.REDIS_URL || 'redis://red-clni7ipll56s73ficld0:6379');
+
+redisClient.on('error', (err) => {
+    console.error(`Błąd Redis: ${err}`);
+});
 
 app.get("/", (req, res) => {
     res.send("Witam w API sklepu");
@@ -41,9 +44,7 @@ app.post('/orders', async (req, res) => {
         const updatedOrdersFile = JSON.stringify(orders, null, 2);
         await fs.writeFile('orders.js', `module.exports = ${updatedOrdersFile};`, 'utf-8');
 
-        // Dodawanie zamówienia do Redis
-        const redisClient = createRedisClient();
-
+        // Pobieranie indeksu zamówienia
         const orderIndex = await new Promise((resolve, reject) => {
             redisClient.incr('orderIndex', (err, orderIndex) => {
                 if (err) {
@@ -55,18 +56,9 @@ app.post('/orders', async (req, res) => {
             });
         });
 
-        await new Promise((resolve, reject) => {
-            redisClient.set(`order:${orderIndex}`, JSON.stringify(newOrder), (err) => {
-                if (err) {
-                    console.error(err);
-                    reject(err);
-                } else {
-                    resolve();
-                }
-            });
-        });
+        // Zapisywanie zamówienia w Redis
+        redisClient.set(`order:${orderIndex}`, JSON.stringify(newOrder));
 
-        redisClient.quit();
         res.json({ message: 'Zamówienie dodane pomyślnie' });
     } catch (error) {
         console.error(error);
