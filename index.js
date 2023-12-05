@@ -7,10 +7,13 @@ const products = require("./products");
 const orders = require("./orders");
 
 const app = express();
-const redisClient = redis.createClient(process.env.REDIS_URL || 'redis://red-clni7ipll56s73ficld0:6379');
 
 app.use(express.json());
 app.use(cors());
+
+const createRedisClient = () => {
+    return redis.createClient('redis://red-clni7ipll56s73ficld0:6379');
+};
 
 app.get("/", (req, res) => {
     res.send("Witam w API sklepu");
@@ -39,18 +42,22 @@ app.post('/orders', async (req, res) => {
         await fs.writeFile('orders.js', `module.exports = ${updatedOrdersFile};`, 'utf-8');
 
         // Dodawanie zamówienia do Redis
+        const redisClient = createRedisClient();
         redisClient.incr('orderIndex', (err, orderIndex) => {
             if (err) {
                 console.error(err);
+                redisClient.quit();
                 return res.status(500).json({ error: 'Błąd podczas zapisywania zamówienia' });
             }
 
             redisClient.set(`order:${orderIndex}`, JSON.stringify(newOrder), (err) => {
                 if (err) {
                     console.error(err);
+                    redisClient.quit();
                     return res.status(500).json({ error: 'Błąd podczas zapisywania zamówienia' });
                 }
 
+                redisClient.quit();
                 res.json({ message: 'Zamówienie dodane pomyślnie' });
             });
         });
