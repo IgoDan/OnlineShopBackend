@@ -12,10 +12,17 @@ app.use(express.json());
 app.use(cors());
 
 // Tworzenie klienta Redis
-const redisClient = redis.createClient(process.env.REDIS_URL || 'redis://red-clni7ipll56s73ficld0:6379');
+const redisClient = redis.createClient({
+  host: 'redis://red-clni7ipll56s73ficld0',
+  port: '6379'
+});
 
 redisClient.on('error', (err) => {
     console.error(`Błąd Redis: ${err}`);
+});
+
+client.on('connect', function() {
+  console.log('Połączono do Redis');
 });
 
 app.get("/", (req, res) => {
