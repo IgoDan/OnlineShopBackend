@@ -1,7 +1,7 @@
-import express from 'express';
-import cors from 'cors';
-import { createClient } from 'redis';
-import fs from 'fs/promises';
+const express = require('express');
+const cors = require('cors');
+const { createClient } = require('redis');
+const fs = require('fs').promises;
 
 const products = require('./products');
 const orders = require('./orders');
@@ -11,11 +11,12 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Connect to Redis
-const redisClient = createClient({
-  url: 'redis://red-clni7ipll56s73ficld0',
+const redisConfig = {
+  host: 'red-clni7ipll56s73ficld0',
   port: '6379'
-});
+};
+
+const redisClient = createClient(redisConfig);
 
 redisClient.on('error', (err) => console.log('Redis Client Error', err));
 
@@ -30,7 +31,6 @@ app.get('/products', (req, res) => {
 app.get('/orders', async (req, res) => {
   try {
     const ordersFromRedis = await redisClient.hgetall('orders');
-
     const ordersArray = Object.values(ordersFromRedis).map((order) =>
       JSON.parse(order)
     );
@@ -45,12 +45,10 @@ app.get('/orders', async (req, res) => {
 app.post('/orders', async (req, res) => {
   try {
     const newOrder = req.body;
-
     const currentIndex = await redisClient.incr('orderIndex');
-
     await redisClient.hset('orders', currentIndex, JSON.stringify(newOrder));
 
-    orders[currentIndex] = newOrder;
+    orders.push(newOrder);
     const updatedOrders = JSON.stringify(orders, null, 2);
     await fs.writeFile('orders.js', `module.exports = ${updatedOrders};`, 'utf-8');
 
