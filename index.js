@@ -21,7 +21,7 @@ redisClient.on('error', (err) => {
     console.error(`Błąd Redis: ${err}`);
 });
 
-client.on('connect', function() {
+redisClient.on('connect', function() {
   console.log('Połączono do Redis');
 });
 
