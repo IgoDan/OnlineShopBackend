@@ -13,7 +13,7 @@ app.use(cors());
 
 // Rozdziel URL i port dla Redis
 const redisConfig = {
-  host: 'red-clni7ipll56s73ficld0',
+  host: 'rediss://red-clni7ipll56s73ficld0:szMWcB5aCxZoI7OSH7HvWdYJw2wLrfno@frankfurt-redis.render.com',
   port: '6379',
 };
 
