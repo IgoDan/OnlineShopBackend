@@ -1,60 +1,68 @@
-const express = require("express");
-const util = require('util');
-const redis = require('redis');
-const fs = require('fs/promises');
-const { ClientClosedError } = require('@redis/client');
+import express from 'express';
+import cors from 'cors';
+import { createClient } from 'redis';
+import fs from 'fs/promises';
 
 const products = require('./products');
 const orders = require('./orders');
 
 const app = express();
-const port = process.env.PORT || 5000;
 
-const redisExternalURL = 'rediss://red-clni7ipll56s73ficld0:szMWcB5aCxZoI7OSH7HvWdYJw2wLrfno@frankfurt-redis.render.com:6379';
-const client = redis.createClient(redisExternalURL);
+app.use(express.json());
+app.use(cors());
 
-// Promisify operacje Redis
-const incrAsync = util.promisify(client.incr).bind(client);
-const setAsync = util.promisify(client.set).bind(client);
-
-client.on('connect', () => {
-    console.log('Połączono z Redis');
+// Connect to Redis
+const redisClient = createClient({
+  url: 'redis://red-clni7ipll56s73ficld0',
+  port: '6379'
 });
 
-client.on('error', (err) => {
-    console.error(`Błąd połączenia z Redis: ${err}`);
+redisClient.on('error', (err) => console.log('Redis Client Error', err));
+
+app.get('/', (req, res) => {
+  res.send('Witam w API sklepu');
+});
+
+app.get('/products', (req, res) => {
+  res.send(products);
+});
+
+app.get('/orders', async (req, res) => {
+  try {
+    const ordersFromRedis = await redisClient.hgetall('orders');
+
+    const ordersArray = Object.values(ordersFromRedis).map((order) =>
+      JSON.parse(order)
+    );
+
+    res.json(ordersArray);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Błąd podczas odczytu zamówień' });
+  }
 });
 
 app.post('/orders', async (req, res) => {
-    try {
-        const newOrder = req.body;
+  try {
+    const newOrder = req.body;
 
-        // Pobierz autoinkrementowany indeks z Redis asynchronicznie
-        const orderId = await incrAsync('orderIndex');
+    const currentIndex = await redisClient.incr('orderIndex');
 
-        // Dodaj nowe zamówienie z autoinkrementowanym indeksem
-        const orderWithId = { id: orderId, ...newOrder };
-        orders.push(orderWithId);
+    await redisClient.hset('orders', currentIndex, JSON.stringify(newOrder));
 
-        // Zapisz zamówienia w pliku
-        const updatedOrders = JSON.stringify(orders, null, 2);
-        await fs.writeFile('orders.js', `module.exports = ${updatedOrders};`, 'utf-8');
+    orders[currentIndex] = newOrder;
+    const updatedOrders = JSON.stringify(orders, null, 2);
+    await fs.writeFile('orders.js', `module.exports = ${updatedOrders};`, 'utf-8');
 
-        // Dodaj zamówienie do Redis asynchronicznie
-        await setAsync(`order:${orderId}`, JSON.stringify(orderWithId));
-
-        res.json({ message: 'Zamówienie dodane pomyślnie' });
-    } catch (error) {
-        if (error instanceof ClientClosedError) {
-            console.error('Błąd: Klient Redis został zamknięty');
-            res.status(500).json({ error: 'Błąd podczas zapisywania zamówienia' });
-        } else {
-            console.error(error);
-            res.status(500).json({ error: 'Błąd podczas zapisywania zamówienia' });
-        }
-    }
+    res.json({ message: 'Zamówienie dodane pomyślnie' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Błąd podczas zapisywania zamówienia' });
+  }
 });
 
+const port = process.env.PORT || 5000;
+
 app.listen(port, () => {
-    console.log(`Serwer działa na porcie ${port}`);
+  console.log(`Serwer działa na porcie ${port}`);
 });
