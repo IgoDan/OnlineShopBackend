@@ -43,24 +43,31 @@ app.post('/orders', async (req, res) => {
 
         // Dodawanie zamówienia do Redis
         const redisClient = createRedisClient();
-        redisClient.incr('orderIndex', (err, orderIndex) => {
-            if (err) {
-                console.error(err);
-                redisClient.quit();
-                return res.status(500).json({ error: 'Błąd podczas zapisywania zamówienia' });
-            }
 
+        const orderIndex = await new Promise((resolve, reject) => {
+            redisClient.incr('orderIndex', (err, orderIndex) => {
+                if (err) {
+                    console.error(err);
+                    reject(err);
+                } else {
+                    resolve(orderIndex);
+                }
+            });
+        });
+
+        await new Promise((resolve, reject) => {
             redisClient.set(`order:${orderIndex}`, JSON.stringify(newOrder), (err) => {
                 if (err) {
                     console.error(err);
-                    redisClient.quit();
-                    return res.status(500).json({ error: 'Błąd podczas zapisywania zamówienia' });
+                    reject(err);
+                } else {
+                    resolve();
                 }
-
-                redisClient.quit();
-                res.json({ message: 'Zamówienie dodane pomyślnie' });
             });
         });
+
+        redisClient.quit();
+        res.json({ message: 'Zamówienie dodane pomyślnie' });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Błąd podczas zapisywania zamówienia' });
