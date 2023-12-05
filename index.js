@@ -13,8 +13,7 @@ app.use(cors());
 
 // Tworzenie klienta Redis
 const redisClient = redis.createClient({
-  host: 'red-clni7ipll56s73ficld0',
-  port: 6379
+  url: 'rediss://red-clni7ipll56s73ficld0:szMWcB5aCxZoI7OSH7HvWdYJw2wLrfno@frankfurt-redis.render.com:6379',
 });
 
 redisClient.on('error', (err) => {
