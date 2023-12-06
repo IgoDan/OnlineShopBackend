@@ -48,9 +48,12 @@ app.get('/orders', async (req, res) => {
     );
 
     res.json(ordersArray);
+
+    console.log('Udało się odczytać wszystkie zamówienia');
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Błąd podczas odczytu zamówień' });
+    console.log('Nie udało się odczytać wszystkich zamówień');
   }
 });
 
@@ -59,6 +62,7 @@ app.post('/orders', async (req, res) => {
     const newOrder = req.body;
 
     await redis.hset('orders', currentIndex, JSON.stringify(newOrder));
+    console.log(`Dodane nowe zamówienie, nr: ${currentIndex}`);
 
     currentIndex += 1;
 
@@ -68,6 +72,7 @@ app.post('/orders', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Błąd podczas zapisywania zamówienia' });
+    console.log(`Nie udało się dodać zamówienia, nr: ${currentIndex}`);
   }
 });
 
