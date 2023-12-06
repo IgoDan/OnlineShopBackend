@@ -1,6 +1,6 @@
-import express from 'express';
-import cors from 'cors';
-import { createClient } from 'redis';
+const express = require("express");
+const cors = require("cors");
+const redis = require('redis');
 
 const products = require('./products');
 const orders = require('./orders');
@@ -10,8 +10,9 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-const redisClient = createClient({
-  url: process.env.REDIS_URL || 'redis://red-clni7ipll56s73ficld0:6379',
+const redisClient = redis.createClient({
+  url: 'redis://red-clni7ipll56s73ficld0',
+  port: '6379'
 });
 
 client.on('connect', () => {
