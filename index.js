@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const redis = require('redis');
+const Redis = require("ioredis");
 
 const products = require('./products');
 const orders = require('./orders');
@@ -10,16 +10,15 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-const redisClient = redis.createClient({
-  url: 'redis://red-clni7ipll56s73ficld0',
-  port: '6379'
-});
+const redis = new Redis('rediss://red-clo9ofuqc21c73e58jeg:r6ebGwEtL0mNRyBls7YzsQQzMMRYrKJy@frankfurt-redis.render.com:6379');
 
-redisClient.on('connect', () => {
+var currentIndex = 0;
+
+redis.on('connect', () => {
   console.log('Połączono z Redis');
 });
 
-redisClient.on('error', (err) => {
+redis.on('error', (err) => {
   console.error(`Błąd połączenia z Redis: ${err}`);
 });
 
@@ -33,7 +32,7 @@ app.get('/products', (req, res) => {
 
 app.get('/orders', async (req, res) => {
   try {
-    const ordersFromRedis = await redisClient.hgetall('orders');
+    let ordersFromRedis = await redis.hgetall('orders');
 
     const ordersArray = Object.values(ordersFromRedis).map((order) =>
       JSON.parse(order)
@@ -50,9 +49,9 @@ app.post('/orders', async (req, res) => {
   try {
     const newOrder = req.body;
 
-    const currentIndex = await redisClient.incr('orderIndex');
+    await redis.hset('orders', currentIndex, JSON.stringify(newOrder));
 
-    await redisClient.hset('orders', currentIndex, JSON.stringify(newOrder));
+    currentIndex += 1;
 
     res.json({ message: 'Zamówienie dodane pomyślnie' });
   } catch (error) {
