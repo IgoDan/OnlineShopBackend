@@ -12,7 +12,16 @@ app.use(cors());
 
 const redis = new Redis('rediss://red-clo9ofuqc21c73e58jeg:r6ebGwEtL0mNRyBls7YzsQQzMMRYrKJy@frankfurt-redis.render.com:6379');
 
-var currentIndex = 0;
+let currentIndex = 0;
+
+async function getCurrentIndex() {
+  const storedIndex = await redis.get('currentOrderIndex');
+  if (storedIndex) {
+    currentIndex = parseInt(storedIndex, 10);
+  }
+}
+
+getCurrentIndex();
 
 redis.on('connect', () => {
   console.log('Połączono z Redis');
@@ -52,6 +61,8 @@ app.post('/orders', async (req, res) => {
     await redis.hset('orders', currentIndex, JSON.stringify(newOrder));
 
     currentIndex += 1;
+
+    await redis.set('currentOrderIndex', currentIndex);
 
     res.json({ message: 'Zamówienie dodane pomyślnie' });
   } catch (error) {
