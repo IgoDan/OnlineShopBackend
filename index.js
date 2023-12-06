@@ -15,11 +15,11 @@ const redisClient = redis.createClient({
   port: '6379'
 });
 
-client.on('connect', () => {
+redisClient.on('connect', () => {
   console.log('Połączono z Redis');
 });
 
-client.on('error', (err) => {
+redisClient.on('error', (err) => {
   console.error(`Błąd połączenia z Redis: ${err}`);
 });
 
